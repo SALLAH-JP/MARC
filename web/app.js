@@ -319,3 +319,43 @@ function setStatusDot(online) {
 connectSSE();
 moveMarc(currentStation);
 updateStationStyles();
+
+
+// ═══════════════════════════════════════════
+//  CAMÉRA (service dédié sur port 5001)
+// ═══════════════════════════════════════════
+const CAMERA_HOST = window.CAMERA_HOST || `http://${window.location.hostname}:5001`;
+
+function initCamera() {
+  const feed = document.getElementById('cameraFeed');
+  if (feed) feed.src = `${CAMERA_HOST}/video`;
+  pollDetections();
+}
+
+async function pollDetections() {
+  const statusEl = document.getElementById('cameraStatus');
+  const detEl    = document.getElementById('cameraDetections');
+  try {
+    const res  = await fetch(`${CAMERA_HOST}/detections`);
+    const data = await res.json();
+    if (statusEl) { statusEl.textContent = '● LIVE'; statusEl.classList.remove('offline'); }
+
+    const ids = Object.keys(data);
+    if (ids.length === 0) {
+      detEl.innerHTML = '<span class="cam-det-empty">Aucun marqueur détecté</span>';
+    } else {
+      detEl.innerHTML = ids.map(id => {
+        const d = data[id];
+        const info = (d.distance != null)
+          ? `${d.distance}m ${d.angle >= 0 ? '+' : ''}${d.angle}°`
+          : 'détecté';
+        return `<span class="cam-det-badge">ID ${id} · ${info}</span>`;
+      }).join('');
+    }
+  } catch {
+    if (statusEl) { statusEl.textContent = '● OFFLINE'; statusEl.classList.add('offline'); }
+  }
+  setTimeout(pollDetections, 500);  // rafraîchit 2×/s
+}
+
+initCamera();

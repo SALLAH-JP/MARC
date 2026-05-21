@@ -25,7 +25,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 #  CONFIGURATION
 # ─────────────────────────────────────────────
 OLLAMA_URL    = "http://localhost:11434/api/chat"
-OLLAMA_MODEL  = "mistral-large-3:675b-cloud"
+OLLAMA_MODEL  = "ministral-3:14b-cloud"
 SERVER_URL    = "https://localhost:5000"
 
 WAKE_WORDS    = ["salut marc", "salut marque", "salut mac"]

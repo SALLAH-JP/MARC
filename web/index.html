@@ -127,9 +127,27 @@
     </section>
 
     <!-- ===== DESTINATIONS ===== -->
+   <!-- ===== CAMÉRA + DESTINATIONS ===== -->
     <aside class="controls-panel">
-      <p class="card-label" style="padding-left:4px;margin-bottom:8px">Destinations</p>
 
+      <!-- Flux caméra -->
+      <div class="camera-card">
+        <div class="camera-header">
+          <p class="card-label" style="margin:0">Caméra MARC</p>
+          <span class="camera-status" id="cameraStatus">● LIVE</span>
+        </div>
+        <div class="camera-feed">
+          <img id="cameraFeed" src="" alt="Flux caméra"
+               onerror="this.classList.add('cam-error')"
+               onload="this.classList.remove('cam-error')">
+          <div class="camera-placeholder">Caméra hors ligne</div>
+        </div>
+        <div class="camera-detections" id="cameraDetections">
+          <span class="cam-det-empty">Aucun marqueur détecté</span>
+        </div>
+      </div>
+
+      <p class="card-label" style="padding-left:4px;margin-bottom:8px;margin-top:6px">Destinations</p>
       <div class="station-card" id="card-base"   onclick="selectStation('base')">
         <div class="station-info"><div class="station-icon-sm">🏠</div><div><div class="station-card-name">Base</div><div class="station-card-sub">Station 0 — départ</div></div></div>
         <div class="station-badge" id="badge-base">—</div>
@@ -208,6 +226,11 @@
       </div>
     </div>
   </section>
+
+  <script>
+    // IP du Pi (même hôte que la page, port 5001 pour le service caméra)
+    window.CAMERA_HOST = `https://${window.location.hostname}:5001`;
+  </script>
 
   <script src="app.js"></script>
 </body>

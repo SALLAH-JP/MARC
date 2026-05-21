@@ -96,6 +96,15 @@ void loop() {
       inputA = (imu.getRoll()) * 180.0 / PI - 180;
       if ( inputA < -180) inputA += 360;
 
+      // Envoi du yaw au Pi à 10 Hz (localisation)
+      static unsigned long lastYawSend = 0;
+      if (millis() - lastYawSend > 100) {
+        float yaw = imu.getYaw() * 180.0 / PI;
+        Serial.print("Y:");
+        Serial.println(yaw, 1);
+        lastYawSend = millis();
+      }
+
       pidV.Compute();
       setpointA = EQUILIBRE + outputV;
       pidA.Compute();

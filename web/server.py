@@ -73,6 +73,8 @@ station_actuelle  = -1
 destination_cible = None
 line_following    = False
 eyes = None
+robot_yaw         = 0.0   # cap brut du BNO085 (degrés)
+
 
 # Numéro de station physique → id web
 STATION_NUMBERS = {
@@ -203,6 +205,12 @@ def serial_worker():
                                 station_actuelle = int(line[2:])
                                 print(f"📍 Station : {station_actuelle}")
                                 check_destination()
+                            except ValueError:
+                                pass
+                        elif line.startswith("Y:"):
+                            try:
+                                global robot_yaw
+                                robot_yaw = float(line[2:])
                             except ValueError:
                                 pass
 
@@ -398,6 +406,47 @@ def static_files(filename):
 @app.route("/status")
 def status():
     return jsonify({"robot_state": full_state()})
+
+# ── Contrôle moteur direct (pour navigation ArUco) ──
+@app.route("/motor", methods=["POST"])
+def motor():
+    """Injecte les commandes moteur depuis le service de navigation."""
+    global current_move, current_turn
+    # Sécurité : refuse si le mode suivi de ligne est actif
+    if line_following:
+        return jsonify({"ok": False, "error": "mode ligne actif"}), 409
+    data = request.get_json()
+    current_move = int(data.get("move", 0))
+    current_turn = int(data.get("turn", 0))
+    return jsonify({"ok": True, "move": current_move, "turn": current_turn})
+
+
+
+# ── Cap (yaw) du robot pour la localisation ──
+@app.route("/heading")
+def heading():
+    return jsonify({"yaw": robot_yaw})
+
+
+# ── Navigation : démarrer/arrêter ──
+@app.route("/navigation", methods=["POST"])
+def navigation():
+    """Reçoit l'état de navigation pour mise à jour de l'interface."""
+    data = request.get_json()
+    event = data.get("event")
+    target = data.get("target")
+    if event == "start":
+        robot_state["target"] = target
+        broadcast_log(f"Navigation ArUco → {target}", "cmd")
+    elif event == "arrived":
+        robot_state["current"] = target
+        robot_state["target"] = None
+        broadcast_log(f"Arrivé à la cible {target}", "info")
+        tts("Je suis arrivé.")
+    elif event == "lost":
+        broadcast_log(f"Cible {target} introuvable", "err")
+    broadcast_state()
+    return jsonify({"ok": True})
 
 
 # ─────────────────────────────────────────────
