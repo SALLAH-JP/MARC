@@ -13,16 +13,16 @@ import math
 import requests
 import urllib3
 
-from localization import localize  # réutilise le module de localisation
+from localization import localize, get_yaw  # réutilise le module de localisation
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 SERVER_URL = "https://localhost:5000"
 
 # ── Paramètres de contrôle ──
-GOAL_TOLERANCE_M   = 0.25    # distance d'arrêt à la cible
+GOAL_TOLERANCE_M   = 0.50    # distance d'arrêt à la cible
 ANGLE_TOLERANCE    = 10      # tolérance d'alignement (degrés)
-TURN_SPEED         = 90      # vitesse rotation sur place
+TURN_SPEED         = 20      # vitesse rotation sur place
 FORWARD_SPEED      = 90      # vitesse d'avance
 KP_TURN            = 3.0     # gain correction d'angle en avançant
 MAX_LOST           = 15      # frames sans localisation avant arrêt
@@ -54,6 +54,7 @@ def go_to(goal_x, goal_y):
 
     while True:
         loc = localize()
+        print(f"[NAV] cap={get_yaw():.0f}°")
 
         if loc is None:
             lost += 1
