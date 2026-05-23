@@ -17,7 +17,7 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 
 # ── Imports voiceAssistant (fonctions partagées) ──
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(os.path.join(ROOT, "Local-Voice"))
+sys.path.append(os.path.join(ROOT, "assistantVocale"))
 sys.path.append(os.path.join(ROOT, "matrixLed"))
 from voiceAssistant import speak, ask_ollama, recognizer
 
@@ -74,6 +74,8 @@ destination_cible = None
 line_following    = False
 eyes = None
 robot_yaw         = 0.0   # cap brut du BNO085 (degrés)
+robot_distance    = 0.0   # distance cumulée parcourue (cm)
+
 
 
 # Numéro de station physique → id web
@@ -213,7 +215,12 @@ def serial_worker():
                                 robot_yaw = float(line[2:])
                             except ValueError:
                                 pass
-
+                        elif line.startswith("D:"):
+                            try:
+                                global robot_distance
+                                robot_distance = float(line[2:])
+                            except ValueError:
+                                pass
             except Exception as e:
                 print(f"❌  Serial error: {e}")
 
@@ -421,11 +428,10 @@ def motor():
     return jsonify({"ok": True, "move": current_move, "turn": current_turn})
 
 
-
-# ── Cap (yaw) du robot pour la localisation ──
-@app.route("/heading")
-def heading():
-    return jsonify({"yaw": robot_yaw})
+# ── Distance cumulée (odométrie) ──
+@app.route("/odometry")
+def odometry():
+    return jsonify({"distance": robot_distance, "yaw": robot_yaw})
 
 
 # ── Navigation : démarrer/arrêter ──

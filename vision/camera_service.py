@@ -18,7 +18,7 @@ from flask import Flask, Response, jsonify
 from picamera2 import Picamera2
 
 # ── CONFIG ──
-MARKER_SIZE_M = 0.055   # ⚠️ ta mesure : 55mm = 0.055 m
+MARKER_SIZE_M = 0.077   # ⚠️ ta mesure : 77mm = 0.077 m
 DISTANCE_CORRECTION = 0.748   # corrige le biais proportionnel mesuré
 CALIB_FILE = os.path.expanduser("~/PFE/camera_calibration.npz")
 RESOLUTION = (640, 480)
