@@ -19,8 +19,8 @@ from picamera2 import Picamera2
 
 # ── CONFIG ──
 MARKER_SIZE_M = 0.077   # ⚠️ ta mesure : 77mm = 0.077 m
-DISTANCE_CORRECTION = 0.748   # corrige le biais proportionnel mesuré
-CALIB_FILE = os.path.expanduser("~/PFE/camera_calibration.npz")
+DISTANCE_CORRECTION = 0.738   # corrige le biais proportionnel mesuré
+CALIB_FILE = os.path.expanduser("~/MARC/vision/camera_calibration.npz")
 RESOLUTION = (640, 480)
 
 # ── Calibration (optionnelle : si absente, pas de distance/angle) ──
@@ -137,7 +137,7 @@ def health():
 
 if __name__ == '__main__':
     threading.Thread(target=camera_loop, daemon=True).start()
-    WEB_DIR = os.path.dirname(os.path.abspath(__file__))
+    WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
     cert = os.path.join(WEB_DIR, 'cert.pem')
     key  = os.path.join(WEB_DIR, 'key.pem')
     print("[CAM] Service démarré sur https://0.0.0.0:5001")

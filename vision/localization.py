@@ -21,13 +21,16 @@ SERVER_URL = "https://localhost:5000"
 
 # ── CARTE DES MARQUEURS (positions x,y en mètres) ──
 MARKERS_MAP = {
-    3: (-0.58, 2.50),
-    2: ( 2.17, 0.96),
-    0: ( 0.55, -4.35),
+    0: (-2.07, 0),
+    1: (-2.08, 1.07),
+    3: (-0.66, 2.45),
+    2: (2.17, 1.05),
+    4: (2.17, -0.33),
+    5: (0.96, -3.39)
 }
 
 # Offset IMU : yaw brut quand MARC est face à -Y (= cap 0° dans la convention salle)
-YAW_OFFSET = -5.9
+YAW_OFFSET = -5.5
 
 # ── État de la fusion odométrie ──
 _fused = {

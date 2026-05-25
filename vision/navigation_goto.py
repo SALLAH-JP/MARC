@@ -21,8 +21,8 @@ SERVER_URL = "https://localhost:5000"
 
 # ── Paramètres de contrôle ──
 GOAL_TOLERANCE_M = 0.25    # distance d'arrêt à la cible
-ANGLE_TOLERANCE  = 10      # tolérance d'alignement (degrés)
-TURN_SPEED       = 90      # vitesse rotation sur place
+ANGLE_TOLERANCE  = 15      # tolérance d'alignement (degrés)
+TURN_SPEED       = 30      # vitesse rotation sur place
 FORWARD_SPEED    = 90      # vitesse d'avance
 KP_TURN          = 3.0     # gain correction d'angle en avançant
 MAX_LOST         = 20      # cycles sans localisation avant arrêt
