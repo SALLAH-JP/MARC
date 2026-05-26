@@ -51,6 +51,8 @@ void setup() {
   pinMode(RIGHT_SENSOR_PIN, INPUT);
   pinMode(CENTER_SENSOR_PIN, INPUT);
 
+  setupUltrasons();
+
   // PID
   pidA.SetSampleTime(10);
   pidA.SetOutputLimits(-5000, 5000);
@@ -105,6 +107,26 @@ void loop() {
         lastYawSend = millis();
       }
 
+
+
+      // Envoi de la distance parcourue au Pi à 10 Hz
+      static unsigned long lastDistSend = 0;
+      if (millis() - lastDistSend > 100) {
+         long posL = motorL->getCurrentPosition();
+         long posR = -motorR->getCurrentPosition();   // signe inversé comme dans measureSpeed
+         // distance moyenne en cm
+         float stepsToCm = (PI * WHEEL_DIAMETER) / (STEPS_REV * MICRO_STEPS);
+         float distL = posL * stepsToCm;
+         float distR = posR * stepsToCm;
+         float dist = (distL + distR) / 2.0;
+         Serial.print("D:");
+         Serial.println(dist, 1);
+         lastDistSend = millis();
+      }
+
+      updateUltrasons();
+      sendUltrasons();
+
       pidV.Compute();
       setpointA = EQUILIBRE + outputV;
       pidA.Compute();
@@ -114,22 +136,6 @@ void loop() {
     }    
 
   }
-
-  // Envoi de la distance parcourue au Pi à 10 Hz
-  static unsigned long lastDistSend = 0;
-  if (millis() - lastDistSend > 100) {
-      long posL = motorL->getCurrentPosition();
-      long posR = -motorR->getCurrentPosition();   // signe inversé comme dans measureSpeed
-      // distance moyenne en cm
-      float stepsToCm = (PI * WHEEL_DIAMETER) / (STEPS_REV * MICRO_STEPS);
-      float distL = posL * stepsToCm;
-      float distR = posR * stepsToCm;
-      float dist = (distL + distR) / 2.0;
-      Serial.print("D:");
-      Serial.println(dist, 1);
-      lastDistSend = millis();
-  }
-
   
 
   //Serial.print(KpA); Serial.print(" => "); Serial.print(KiA); Serial.print(" => "); Serial.println(KdA);

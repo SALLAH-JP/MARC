@@ -2,13 +2,14 @@
 #include "SparkFun_BNO08x_Arduino_Library.h"
 #include <FastAccelStepper.h>
 #include <IRremote.h>
+#include <NewPing.h>
 #include <PID_v1.h>
 
 
 // === Hardware Data ===
 #define WHEEL_DIAMETER 20
 #define STEPS_REV 200
-#define MICRO_STEPS 2
+#define MICRO_STEPS 4
 
 
 // === Définition des pins ===
@@ -79,5 +80,30 @@ int centerValue;
 // Reperage des stations
 int currentStation = 0;   // station détectée actuellement
 int lastSentStation = 0;  // dernière station envoyée au Pi
-bool lineFollowingMode = true;
+bool lineFollowingMode = false;
 
+
+// === Capteurs ultrason HC-SR04 ===
+#define MAX_DIST 80        // portée max (cm)
+#define US_COUNT 3
+
+#define TRIG_C 22           // avant-centre
+#define ECHO_C 23
+#define TRIG_L 24           // avant-gauche
+#define ECHO_L 25
+#define TRIG_R 26           // avant-droit
+#define ECHO_R 27
+
+#define PING_INTERVAL 60    // ms entre chaque ping (33ms = ~30Hz réparti sur 3 capteurs)
+
+enum { US_C = 0, US_L = 1, US_R = 2 };
+
+NewPing sonar[US_COUNT] = {
+  NewPing(TRIG_C, ECHO_C, MAX_DIST),
+  NewPing(TRIG_L, ECHO_L, MAX_DIST),
+  NewPing(TRIG_R, ECHO_R, MAX_DIST)
+};
+
+unsigned long us_pingTimer[US_COUNT];   // quand pinger chaque capteur
+int us_currentSensor = 0;                // capteur en cours
+float us_dist[US_COUNT] = {-1, -1, -1};  // distances (cm), -1 = hors portée

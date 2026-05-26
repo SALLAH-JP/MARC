@@ -220,3 +220,42 @@ void sendStationIfChanged() {
     lastSentStation = currentStation;
   }
 }
+
+
+// Callback appelé par NewPing quand l'écho revient (ou timeout)
+void echoCheck() {
+  if (sonar[us_currentSensor].check_timer()) {
+    // écho reçu : convertir en cm
+    us_dist[us_currentSensor] = sonar[us_currentSensor].ping_result / US_ROUNDTRIP_CM;
+  }
+}
+
+void setupUltrasons() {
+  us_pingTimer[0] = millis() + 75;          // démarre le 1er ping bientôt
+  for (int i = 1; i < US_COUNT; i++)
+    us_pingTimer[i] = us_pingTimer[i - 1] + PING_INTERVAL;
+}
+
+// Gestion non-bloquante : déclenche les capteurs à tour de rôle via timer
+void updateUltrasons() {
+  for (int i = 0; i < US_COUNT; i++) {
+    if (millis() >= us_pingTimer[i]) {
+      us_pingTimer[i] += PING_INTERVAL * US_COUNT;   // reprogramme ce capteur
+      sonar[us_currentSensor].timer_stop();          // arrête le précédent
+      us_currentSensor = i;
+      sonar[i].ping_timer(echoCheck);                // ping non-bloquant + callback
+    }
+  }
+}
+
+// Envoi des 3 distances au Pi : "U:centre:gauche:droite"
+void sendUltrasons() {
+  static unsigned long lastSend = 0;
+  if (millis() - lastSend > 100) {   // 10 Hz
+    Serial.print("U:");
+    Serial.print(us_dist[US_C], 0); Serial.print(":");
+    Serial.print(us_dist[US_L], 0); Serial.print(":");
+    Serial.println(us_dist[US_R], 0);
+    lastSend = millis();
+  }
+}
