@@ -75,7 +75,9 @@ line_following    = False
 eyes = None
 robot_yaw         = 0.0   # cap brut du BNO085 (degrés)
 robot_distance    = 0.0   # distance cumulée parcourue (cm)
-
+us_centre = -1.0
+us_gauche = -1.0
+us_droite = -1.0
 
 
 # Numéro de station physique → id web
@@ -220,6 +222,15 @@ def serial_worker():
                                 global robot_distance
                                 robot_distance = float(line[2:])
                             except ValueError:
+                                pass
+                        elif line.startswith("U:"):
+                            try:
+                                global us_centre, us_gauche, us_droite
+                                p = line[2:].split(":")
+                                us_centre = float(p[0])
+                                us_gauche = float(p[1])
+                                us_droite = float(p[2])
+                            except (ValueError, IndexError):
                                 pass
             except Exception as e:
                 print(f"❌  Serial error: {e}")
@@ -433,6 +444,9 @@ def motor():
 def odometry():
     return jsonify({"distance": robot_distance, "yaw": robot_yaw})
 
+@app.route("/obstacles")
+def obstacles():
+    return jsonify({"centre": us_centre, "gauche": us_gauche, "droite": us_droite})
 
 # ── Navigation : démarrer/arrêter ──
 @app.route("/navigation", methods=["POST"])
