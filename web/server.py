@@ -51,6 +51,12 @@ except Exception as e:
     arduino = None
 
 
+from collections import deque
+import statistics
+
+_us_gauche_buf = deque(maxlen=10)
+_us_droite_buf = deque(maxlen=10)
+
 # ─────────────────────────────────────────────
 #  CONFIGURATION
 # ─────────────────────────────────────────────
@@ -228,8 +234,12 @@ def serial_worker():
                                 global us_centre, us_gauche, us_droite
                                 p = line[2:].split(":")
                                 us_centre = float(p[0])
-                                us_gauche = float(p[1])
-                                us_droite = float(p[2])
+                                raw_g = float(p[1])
+                                raw_d = float(p[2])
+                                _us_gauche_buf.append(raw_g)
+                                _us_droite_buf.append(raw_d)
+                                us_gauche = statistics.median(_us_gauche_buf)
+                                us_droite = statistics.median(_us_droite_buf)
                             except (ValueError, IndexError):
                                 pass
             except Exception as e:

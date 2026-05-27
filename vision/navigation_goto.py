@@ -65,60 +65,6 @@ def angle_diff(target, current):
     return (target - current + 180) % 360 - 180
 
 
-def go_to2(goal_x, goal_y):
-    """Navigue vers le point (goal_x, goal_y)."""
-    print(f"[NAV] Cible : ({goal_x}, {goal_y})")
-    lost = 0
-
-    while True:
-        loc = localize_fused()
-
-        if loc is None:
-            # pas encore localisé : affiche au moins le cap si dispo
-            _, yaw = get_odometry()
-            cap = f"{heading_salle(yaw):.0f}" if yaw is not None else "?"
-            print(f"[NAV] pos=None cap={cap}°")
-            lost += 1
-            if lost > MAX_LOST:
-                print("[NAV] Localisation perdue, arrêt")
-                stop()
-                return False
-            time.sleep(0.05)
-            continue
-        lost = 0
-
-        x, y, heading = loc["x"], loc["y"], loc["heading"]
-        src = loc.get("source", "?")
-
-        dx = goal_x - x
-        dy = goal_y - y
-        distance = math.hypot(dx, dy)
-
-        if distance < GOAL_TOLERANCE_M:
-            stop()
-            print(f"[NAV] ✓ Arrivé ({distance:.2f}m de la cible)")
-            return True
-
-        # Direction vers la cible (convention salle : 0°=-Y, +90°=+X)
-        bearing = math.degrees(math.atan2(dx, -dy))
-        err = angle_diff(bearing, heading)
-
-        print(f"[NAV] pos=({x:.2f},{y:.2f}) cap={heading:.0f}° "
-              f"dir={bearing:.0f}° err={err:+.0f}° dist={distance:.2f}m [{src}]")
-
-        if abs(err) > ANGLE_TOLERANCE:
-            # mal aligné : tourner sur place
-            # err positif = cible à gauche (trigo) → turn positif = gauche
-            turn = TURN_SPEED if err > 0 else -TURN_SPEED
-            send_motor(0, turn)
-        else:
-            # aligné : avancer avec correction proportionnelle
-            turn = max(-60, min(60, int(KP_TURN * err)))
-            send_motor(FORWARD_SPEED, turn)
-
-        time.sleep(0.1)
-
-
 def go_to(goal_x, goal_y):
     print(f"[NAV] Cible : ({goal_x}, {goal_y})")
     lost = 0
@@ -145,59 +91,96 @@ def go_to(goal_x, goal_y):
         dy = goal_y - y
         distance = math.hypot(dx, dy)
 
-        # ── 1. Arrivé ? ──
         if distance < GOAL_TOLERANCE_M:
             stop()
             print(f"[NAV] ✓ Arrivé ({distance:.2f}m)")
             return True
 
-        # ── Lecture obstacles ──
         centre, gauche, droite = get_obstacles()
 
-        # ── 2. Obstacle CENTRE : contournement franc ──
-        if centre < OBSTACLE_THRESHOLD:
-            gauche_libre = gauche > SIDE_THRESHOLD
-            droite_libre = droite > SIDE_THRESHOLD
-
-            if not gauche_libre and not droite_libre:
-                stop()
-                print(f"[NAV] ⛔ Bloqué (C={centre:.0f} G={gauche:.0f} D={droite:.0f})")
-                time.sleep(0.2)
-                continue
-
-            if droite >= gauche:
-                send_motor(0, -TURN_SPEED)   # contourne par la droite
-                print(f"[NAV] 🚧 Centre bloqué (C={centre:.0f}) → DROITE")
-            else:
-                send_motor(0, TURN_SPEED)    # contourne par la gauche
-                print(f"[NAV] 🚧 Centre bloqué (C={centre:.0f}) → GAUCHE")
-            time.sleep(0.15)
+        # ── 1. Obstacle LATÉRAL : tourner jusqu'à ce que centre soit libre ──
+        if gauche < SIDE_THRESHOLD and centre < OBSTACLE_THRESHOLD:
+            print(f"[NAV] ⚠️  Obstacle gauche (G={gauche:.0f}) → tourne droite")
+            while True:
+                send_motor(0, -TURN_SPEED)
+                time.sleep(0.1)
+                centre, gauche, droite = get_obstacles()
+                print(f"[NAV] ... C={centre:.0f} G={gauche:.0f} D={droite:.0f}")
+                if centre > OBSTACLE_THRESHOLD:
+                    print("[NAV] Centre libre → reprise")
+                    break
             continue
 
-        # ── 3. Navigation normale + correction latérale douce ──
+        if droite < SIDE_THRESHOLD and centre < OBSTACLE_THRESHOLD:
+            print(f"[NAV] ⚠️  Obstacle droite (D={droite:.0f}) → tourne gauche")
+            while True:
+                send_motor(0, TURN_SPEED)
+                time.sleep(0.1)
+                centre, gauche, droite = get_obstacles()
+                print(f"[NAV] ... C={centre:.0f} G={gauche:.0f} D={droite:.0f}")
+                if centre > OBSTACLE_THRESHOLD:
+                    print("[NAV] Centre libre → reprise")
+                    break
+            continue
+
+        # ── 2. Obstacle CENTRE : choisir le côté le plus dégagé,
+        #       tourner 90°, avancer un peu, reprendre ──
+        if centre < OBSTACLE_THRESHOLD:
+            if droite >= gauche:
+                direction = -TURN_SPEED   # droite plus dégagée → tourner à droite
+                label = "DROITE"
+            else:
+                direction = TURN_SPEED    # gauche plus dégagée → tourner à gauche
+                label = "GAUCHE"
+
+            print(f"[NAV] 🚧 Obstacle centre (C={centre:.0f}) → {label} 90°")
+
+            # Tourner ~90° (0.1s * vitesse calibrée — à ajuster selon ton robot)
+            t_90 = 0.0
+            target_turn = 90.0
+            yaw_start = heading
+            while True:
+                send_motor(0, direction)
+                time.sleep(0.1)
+                _, yaw_brut = get_odometry()
+                if yaw_brut is None:
+                    t_90 += 0.1
+                    if t_90 > 3.0:
+                        break
+                    continue
+                current_heading = heading_salle(yaw_brut)
+                turned = abs(angle_diff(current_heading, yaw_start))
+                if turned >= target_turn:
+                    break
+
+            # Avancer un peu
+            print("[NAV] Avance dégagement...")
+            send_motor(FORWARD_SPEED, 0)
+            time.sleep(0.6)
+            stop()
+            time.sleep(0.1)
+            continue
+
+        # ── 3. Navigation normale ──
         bearing = math.degrees(math.atan2(dx, -dy))
         err = angle_diff(bearing, heading)
 
-        # Correction latérale : s'écarter des obstacles proches sur les côtés
+        # Correction latérale douce (obstacles proches mais pas bloquants)
         side_turn = 0
         if gauche < SIDE_THRESHOLD:
-            # obstacle à gauche → s'écarter vers la droite (turn négatif)
-            intensite = (SIDE_THRESHOLD - gauche) / SIDE_THRESHOLD   # 0→1
+            intensite = (SIDE_THRESHOLD - gauche) / SIDE_THRESHOLD
             side_turn -= int(KP_SIDE * intensite * MAX_SIDE_TURN)
         if droite < SIDE_THRESHOLD:
-            # obstacle à droite → s'écarter vers la gauche (turn positif)
             intensite = (SIDE_THRESHOLD - droite) / SIDE_THRESHOLD
             side_turn += int(KP_SIDE * intensite * MAX_SIDE_TURN)
         side_turn = max(-MAX_SIDE_TURN, min(MAX_SIDE_TURN, side_turn))
 
         if abs(err) > ANGLE_TOLERANCE:
-            # mal aligné : tourner sur place (mais on ajoute la correction latérale)
             turn = TURN_SPEED if err > 0 else -TURN_SPEED
-            turn += side_turn   # combine
+            turn += side_turn
             turn = max(-TURN_SPEED, min(TURN_SPEED, turn))
             send_motor(0, turn)
         else:
-            # aligné : avancer avec correction de cap + correction latérale
             turn = int(KP_TURN * err) + side_turn
             turn = max(-60, min(60, turn))
             send_motor(FORWARD_SPEED, turn)
